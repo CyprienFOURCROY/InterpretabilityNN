@@ -3,6 +3,28 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+
+class LeNet5(nn.Module):
+    def __init__(self):
+        super(LeNet5, self).__init__()
+        self.conv1 = nn.Conv2d(1, 6, kernel_size=5, stride=1, padding=2)
+        self.conv2 = nn.Conv2d(6, 16, kernel_size=5)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+        self.relu = nn.ReLU()
+        self.pool = nn.AvgPool2d(kernel_size=2, stride=2)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.conv1(x)))  # Conv1 -> ReLU -> Pool
+        x = self.pool(self.relu(self.conv2(x)))  # Conv2 -> ReLU -> Pool
+        x = x.view(-1, 16 * 5 * 5)  # Flatten
+        x = self.relu(self.fc1(x))  # Fully Connected 1 -> ReLU
+        x = self.relu(self.fc2(x))  # Fully Connected 2 -> ReLU
+        x = self.fc3(x)  # Fully Connected 3 (Output Layer)
+        return x
+
+
 class FashionMNISTCNN(nn.Module):
     def __init__(self, hidden_layers=[128], freeze_cnn=True):
         super(FashionMNISTCNN, self).__init__()

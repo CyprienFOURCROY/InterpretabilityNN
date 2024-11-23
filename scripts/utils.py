@@ -5,7 +5,7 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 
 
-class FashionMNISTCSV(Dataset):
+class MNISTCSV(Dataset):
     def __init__(self, csv_file):
         """
         Args:
@@ -32,3 +32,4 @@ class FashionMNISTCSV(Dataset):
         label_tensor = torch.tensor(label, dtype=torch.long)
 
         return image_tensor, label_tensor
+
