@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 
+import json 
+
 
 class MNISTCSV(Dataset):
     def __init__(self, csv_file):
@@ -33,3 +35,80 @@ class MNISTCSV(Dataset):
 
         return image_tensor, label_tensor
 
+
+def load_model(model_path, model_class):
+    """
+    Load a PyTorch model from a saved state dictionary.
+
+    Args:
+        model_path (str): Path to the model `.pth` file.
+        model_class (nn.Module): The model class definition to reconstruct the architecture.
+
+    Returns:
+        model (nn.Module): The loaded PyTorch model.
+    """
+    # Instantiate the model
+    model = model_class()
+    # Load the state dictionary
+    model.load_state_dict(torch.load(model_path))
+    model.eval()  # Set the model to evaluation mode
+    return model
+
+
+def load_metadata(metadata_path):
+    """
+    Load metadata from a JSON file.
+
+    Args:
+        metadata_path (str): Path to the metadata `.json` file.
+
+    Returns:
+        metadata (dict): The metadata dictionary.
+    """
+    with open(metadata_path, "r") as metadata_file:
+        metadata = json.load(metadata_file)
+    return metadata
+
+
+def add_metadata(metadata_path, params):
+    """
+    Add or update metadata in a JSON file.
+
+    Args:
+        metadata_path (str): Path to the metadata `.json` file.
+        params (dict): The metadata to add to the file.
+    """
+    metadata = {}
+    try:
+
+        with open(metadata_path, "r") as metadata_file:
+            metadata = json.load(metadata_file)
+    except FileNotFoundError:
+        pass  
+    except json.JSONDecodeError:
+        raise ValueError(f"Le fichier {metadata_path} n'est pas un JSON valide.")
+
+    metadata.update(params)
+
+    with open(metadata_path, "w") as metadata_file:
+        json.dump(metadata, metadata_file, indent=4)
+
+
+def check_if_metadata_has_results(metadata_path):
+    """
+    Check if a metadata JSON file contains a 'results' key.
+
+    Args:
+        metadata_path (str): Path to the metadata `.json` file.
+
+    Returns:
+        bool: True if the 'results' key exists, False otherwise.
+    """
+    try:
+        with open(metadata_path, "r") as metadata_file:
+            metadata = json.load(metadata_file)
+        return "Accuracy" in metadata
+    except FileNotFoundError:
+        return False  
+    except json.JSONDecodeError:
+        raise ValueError(f"The file {metadata_path} is not a valid JSON")
