@@ -1,2 +1,6 @@
 
 data/
+models/saved_models/
+models/saved_models_metadata/
+models/saved_models_metadataV2/
+models/saved_modelsV2/
