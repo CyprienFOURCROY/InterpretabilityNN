@@ -33,25 +33,67 @@ import json
 from datetime import datetime
 
 
+import torch
+import os
+import uuid
+import json
+from datetime import datetime
+
+
+import torch
+import os
+import uuid
+import json
+from datetime import datetime
+
+
 def train_model_and_save(
     model,
     train_loader,
     criterion,
     optimizer,
     epochs,
-    learning_rate, 
-    model_dir= "models\\saved_models",
+    learning_rate,
+    model_dir="models\\saved_models",
     metadata_dir="models\\saved_models_metadata",
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    # Ensure directories exist
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(metadata_dir, exist_ok=True)
 
-    for epoch in range(epochs):
+    # Generate a unique ID for the training session
+    parent_id = str(uuid.uuid4())
+    metadata_path = os.path.join(metadata_dir, f"metadata_{parent_id}.json")
+    metadata = {
+        "parent_id": parent_id,
+        "timestamp": datetime.now().isoformat(),
+        "epochs": epochs,
+        "device": device.type,
+        "optimizer": optimizer.__class__.__name__,
+        "learning_rate": learning_rate,
+        "model_architecture": {
+            "class_name": model.__class__.__name__,
+            "state_dict_shapes": {k: v.shape for k, v in model.state_dict().items()},
+            "model_parameters": str(model),
+        },
+        "epoch_details": [],
+    }
 
+    initial_model_path = os.path.join(model_dir, f"model_{parent_id}_epoch0.pth")
+    torch.save(model.state_dict(), initial_model_path)
+    metadata["epoch_details"].append(
+        {
+            "id": parent_id,
+            "model_path": initial_model_path,
+            "epoch": 0,
+            "loss": None,  # No loss for the initial weights
+        }
+    )
+    print(f"Saved initial random weights at Epoch 0 to {initial_model_path}")
+
+    for epoch in range(1, epochs + 1):
         model.train()
         running_loss = 0.0
         for inputs, labels in train_loader:
@@ -65,40 +107,26 @@ def train_model_and_save(
 
             running_loss += loss.item()
 
-        # Logging epoch loss
         avg_loss = running_loss / len(train_loader)
-        print(f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss}")
+        print(f"Epoch {epoch}/{epochs}, Loss: {avg_loss}")
 
-    # Save model and metadata after training
-    unique_id = str(uuid.uuid4())
-    model_path = os.path.join(model_dir, f"model_{unique_id}.pth")
-    metadata_path = os.path.join(metadata_dir, f"metadata_{unique_id}.json")
+        # Save the model for this epoch
+        epoch_id = str(uuid.uuid4())
+        model_path = os.path.join(model_dir, f"model_{epoch_id}_epoch{epoch}.pth")
+        torch.save(model.state_dict(), model_path)
 
-    # Save model state dictionary
-    torch.save(model.state_dict(), model_path)
+        # Append epoch details to metadata
+        metadata["epoch_details"].append(
+            {
+                "id": epoch_id,
+                "model_path": model_path,
+                "epoch": epoch,
+                "loss": avg_loss,
+            }
+        )
 
-    # Save metadata including model architecture
-    model_config = {
-        "class_name": model.__class__.__name__,
-        "state_dict": {
-            k: v.shape for k, v in model.state_dict().items()
-        },  # Parameter shapes
-        "model_parameters": str(model),  # String representation for reference
-    }
-
-    metadata = {
-        "id": unique_id,
-        "timestamp": datetime.now().isoformat(),
-        "epochs": epochs,
-        "final_loss": avg_loss,
-        "device": device.type,
-        "model_path": model_path,
-        "optimizer": optimizer.__class__.__name__,
-        "learning_rate": learning_rate,
-        "model_architecture": model_config,
-    }
+    # Save metadata to a JSON file
     with open(metadata_path, "w") as metadata_file:
         json.dump(metadata, metadata_file, indent=4)
 
-    print(f"Model saved to {model_path}")
-    print(f"Metadata saved to {metadata_path}")
+    print(f"Training complete. Metadata saved to {metadata_path}.")
